@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<style>
+    .cForm {
+        border: 1px;
+        border-style: solid;
+        padding: 10px;
+        min-width: 200px;
+        margin: 2px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .cFormElem {
+        margin: 5px;
+    }
+
+    .container{
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .drawBoard
+    {
+        border: 1px;
+        border-style: solid;
+        margin: 2px;
+    }
+
+    .pad{
+        margin-top: 20px;
+    }
+</style>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SensTestSuite</title>
+
+</head>
+    <div class="container">
+        <div class = "drawBoard">
+            <canvas id="canva" width="1200" height="1200"></canvas>
+        </div>
+        <div class="cForm">
+            <label>Настройки отрисовки</label>
+            <label for = "sbDrawType" class="pad">Тип отрисовки:</label>
+            <select name="sbDrawType" id = "sbDrawType" class="cFormElem">
+                <option value= "0">Чувствительность</option>
+                <option value= "1">Погрешности </option>
+            </select>
+
+            <label for = "rgAmp">Усиление (1): </label>
+            <input type="range" name="rgAmp" id="rgAmp" class="slider" value = 1  min="1" max="100">
+
+            <label for = "tbCanvWidth">Ширина полотна: </label>
+            <input type="number" name="tbCanvWidth" id="tbCanvWidth" class="cFormElem" value = 1200>
+            <label for = "tbCanvHeight">Высота полотна: </label>
+            <input type="number" name="tbCanvHeight" id="tbCanvHeight" class="cFormElem" value = 1200>
+
+            <label for = "tbRadius">Радиус окружности: </label>
+            <input type="number" name="tbRadius" id="tbRadius" class="cFormElem" value = 430>
+            <label for = "tbSensNumber">Кол-во сенсоров: </label>
+            <input type="number" name="tbSensNumber" id="tbSensNumber" class="cFormElem" value = 13>
+            
+            <label for = "tbRBVzone" class="pad">Погрешность R/B, %: </label>
+            <input type="number" name="tbRBVzone" id="tbRBVzone" class="cFormElem" value = 0.1>
+            <label for = "tbGzone">Погрешность G, %: </label>
+            <input type="number" name="tbGzone" id="tbGzone" class="cFormElem" value = 1>
+            <label for = "tbExtzone">Погрешность внешних зон, %: </label>
+            <input type="number" name="tbExtzone" id="tbExtzone" class="cFormElem" value = 1>
+
+            <label for = "tbPosInp" class="pad">Ошибка расположения на окружности, %: </label>
+            <input type="number" name="tbPosInp" id="tbPosInp" class="cFormElem" value = 0>
+            <div>
+            <label for = "cbPosInpRnd">Случайное расположение, заданное ошибкой: </label>
+            <input type="checkbox" name="cbPosInpRnd" id="cbPosInpRnd" class="cFormElem">
+            </div>
+            
+            <label for = "tbRotInp" class="pad">Поворот каждого сенсора вокруг оси, °: </label>
+            <input type="number" name="tbRotInp" id="tbRotInp" class="cFormElem" value = 0>
+            <div>
+            <label for = "cbRotInpRnd">Случайный поворот, до значения выше: </label>
+            <input type="checkbox" name="cbRotInpRnd" id="cbRotInpRnd" class="cFormElem">
+            </div>
+            
+            <label for = "tbGeoInp" class="pad">Ошибка геометрии, %: </label>
+            <input type="number" name="tbGeoInp" id="tbGeoInp" class="cFormElem" value = 0>
+            <div>
+            <label for = "cbGeoInpRnd">Случайная геометрия, заданная ошибкой: </label>
+            <input type="checkbox" name="cbGeoInpRnd" id="cbGeoInpRnd" class="cFormElem">
+            </div>
+            <button id="btRefresh" type="button" class="pad" style="min-height: 40px;">Обновить</button>
+            <Label id = "status" class="pad"></Label>
+            <div class="pad">
+                <label for = "cbLegend" >Отрисовка шкалы: </label>
+                <input type="checkbox" name="cbLegend" id="cbLegend" class="cFormElem" checked="1">
+            </div>
+            <div>
+                <label for = "cbLabel" >Отрисовка подписи: </label>
+                <input type="checkbox" name="cbLabel" id="cbLabel" class="cFormElem" checked="1">
+            </div>
+
+        </div>
+    </div>
+
+    <script src="FieldSensor.js"></script>
+
+</body>
+</html>
