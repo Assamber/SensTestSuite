@@ -1,6 +1,6 @@
 'use strict';
 
-let drawType = 1;          //0 - чувствительность, 1 - проценты (черный фон), 2 - проценты (синий фон)
+let drawType = 0;          //0 - чувствительность, 1 - проценты (черный фон), 2 - проценты (синий фон)
 //Геометрические параметры
 let radius = 300;
 let sensNumber = 300;
@@ -27,6 +27,11 @@ let canvasWidth = document.getElementById("canva").width;
 let canvasHeight = document.getElementById("canva").height;
 let canvasMidX = canvasWidth/2;
 let canvasMidY = canvasHeight/2;
+
+const button = document.getElementById("btRefresh");
+const sliderAmp = document.getElementById("rgAmp");
+const statusLine = document.getElementById("status");
+const canvas = document.querySelector("#canva");
 
 const vertexSource = `#version 300 es
 
@@ -206,39 +211,10 @@ function generateCircleArray(number, rad, position, rotation, attenuation, posRa
     return [xArr, yArr, rotArr, ampArr];
 }
 
-function getValuesFromForm()
+function updateCanvas()
 {
-    let fDrawType = Number(document.getElementById("sbDrawType").value);
-    let fCanvWidth = document.getElementById("tbCanvWidth").value;
-    let fCanvHeight = document.getElementById("tbCanvHeight").value;
-    let fRadius = document.getElementById("tbRadius").value;
-    let fSensNumber = document.getElementById("tbSensNumber").value;
-    let fRBVzone = document.getElementById("tbRBVzone").value/100;
-    let fGzone = document.getElementById("tbGzone").value/100;
-    let fExtZone = document.getElementById("tbExtzone").value/100;
-
-    let fPosInp = document.getElementById("tbPosInp").value/100;
-    let fPosInpRand = document.getElementById("cbPosInpRnd").checked;
-    let fRotInp = document.getElementById("tbRotInp").value;
-    let fRotInpRand = document.getElementById("cbRotInpRnd").checked;
-    let fGeoInp =  document.getElementById("tbGeoInp").value/100;
-    let fGeoInpRand = document.getElementById("cbGeoInpRnd").checked;
-    let fLegend = document.getElementById("cbLegend").checked;
-    let fLabel = document.getElementById("cbLabel").checked;
-}
-
-function updateCanvas
-{
-
-}
-
-
-function main() {
-    let timeStamp = Date.now();
-
     let arr = generateCircleArray(sensNumber, radius, posErr, rotationErr, geoErr, true, true, true);
 
-    const canvas = document.querySelector("#canva");
     // Initialize the GL context
     const gl = canvas.getContext("webgl2");
     // Only continue if WebGL is available and working
@@ -248,8 +224,13 @@ function main() {
     }
 
     const maxBufferSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
-    console.log("Максимальный размер буффера: ", maxBufferSize);
-    console.log("Количество сенсоров: ", sensNumber);
+    if (sensNumber > maxBufferSize)
+    {
+        console.alert("Превышено максимальное кол-во сенсоров");
+        console.log("Максимальный размер буффера: ", maxBufferSize);
+        console.log("Количество сенсоров: ", sensNumber);
+        return;
+    }
 
     const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexSource);
     const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentSource);
@@ -309,6 +290,7 @@ function main() {
         textures.push(tex);
     }
 
+    gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.useProgram(program);
@@ -338,9 +320,80 @@ function main() {
     offset = 0;
     let count = 6;
     gl.drawArrays(primitiveType, offset, count);
+}
 
-    console.log("Размер поля W = " + canvas.width + ", H = " + canvas.height);
-    console.log("Время выполнения: ", (Date.now() - timeStamp)/1000, "секунд");
+function sliderRefresh()
+{
+    let fAmpCtrl = sliderAmp.value;
+    let fAmpLabel = document.getElementById("lAmp");
+    fAmpLabel.innerHTML = "Усиление (" + fAmpCtrl + ")";
+}
+
+function controlSet()
+{
+    let timeStamp = Date.now();
+    getValuesFromForm();
+    updateCanvas();
+    statusLine.innerText = "Время выполнения: " + (Date.now() - timeStamp)  + " мс";
+}
+
+function getValuesFromForm()
+{
+    let fDrawType = Number(document.getElementById("sbDrawType").value);
+    let fCanvWidth = document.getElementById("tbCanvWidth").value;
+    let fCanvHeight = document.getElementById("tbCanvHeight").value;
+    let fRadius = document.getElementById("tbRadius").value;
+    let fSensNumber = document.getElementById("tbSensNumber").value;
+    let fRBVzone = document.getElementById("tbRBVzone").value/100;
+    let fGzone = document.getElementById("tbGzone").value/100;
+    let fExtZone = document.getElementById("tbExtzone").value/100;
+
+    let fPosInp = document.getElementById("tbPosInp").value/100;
+    let fPosInpRand = document.getElementById("cbPosInpRnd").checked;
+    let fRotInp = document.getElementById("tbRotInp").value;
+    let fRotInpRand = document.getElementById("cbRotInpRnd").checked;
+    let fGeoInp =  document.getElementById("tbGeoInp").value/100;
+    let fGeoInpRand = document.getElementById("cbGeoInpRnd").checked;
+    let fLegend = document.getElementById("cbLegend").checked;
+    let fLabel = document.getElementById("cbLabel").checked;
+    let fAmp = sliderAmp.value;
+
+    if (canvas.width != fCanvWidth || canvas.height != fCanvHeight)
+    {
+        canvas.width = fCanvWidth;
+        canvas.height = fCanvHeight;
+
+        canvasWidth = canvas.width;
+        canvasHeight = canvas.height;
+        canvasMidX = canvasWidth/2;
+        canvasMidY = canvasHeight/2;
+        console.log("Обновлена канва!")
+    }
+
+    radius = fRadius;
+    sensNumber = fSensNumber;
+    drawType = fDrawType;
+    accuracy = fGzone;
+    scale = fRBVzone;
+    externalScale = fExtZone;
+    posErr = fPosInp;
+    geoErr = fGeoInp;
+    rotationErr = fRotInp;
+    amplification = fAmp;
+}
+
+function main() {
+    let timeStamp = Date.now();
+
+    button.addEventListener("click", controlSet);
+    sliderAmp.addEventListener("input", sliderRefresh);
+    sliderAmp.addEventListener("change", controlSet);
+
+    sliderRefresh()
+    updateCanvas()
+
+    console.log("Время выполнения: ", (Date.now() - timeStamp), " мс");
+    statusLine.innerText = "Время выполнения: " + (Date.now() - timeStamp)  + " мс";
 }
 
 main();
