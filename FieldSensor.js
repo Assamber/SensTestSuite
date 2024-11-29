@@ -1,6 +1,6 @@
 'use strict';
 
-let drawType = 0;          //0 - чувствительность, 1 - проценты (черный фон), 2 - проценты (синий фон)
+let drawType = 1;          //0 - чувствительность, 1 - проценты (черный фон), 2 - проценты (синий фон)
 //Геометрические параметры
 let radius = 300;
 let sensNumber = 300;
@@ -8,6 +8,9 @@ let sensNumber = 300;
 let posErr = 0;            //Процент ошибки расположения (100% - 1)
 let geoErr = 0;            //Процент ошибки геометрии (100% - 1)
 let rotationErr = 0;       // +- Угол разброса сенсоров в градусах
+let posRand = false;
+let geoRand = false;
+let rotationRand = false;
 //Масштабные коэффициенты
 let accuracy = 0.01;
 let scale = 0.001;
@@ -28,7 +31,6 @@ let canvasHeight = document.getElementById("canva").height;
 let canvasMidX = canvasWidth/2;
 let canvasMidY = canvasHeight/2;
 
-const button = document.getElementById("btRefresh");
 const sliderAmp = document.getElementById("rgAmp");
 const statusLine = document.getElementById("status");
 const canvas = document.querySelector("#canva");
@@ -95,12 +97,13 @@ const fragmentSource = `#version 300 es
 
             cosAlpha = (pow(b,2.0) + pow(c,2.0) - pow(a,2.0))/(2.0*b*c);
             dist = amp/b;
-            if(sensorData[2] == 0.0)
+            if(abs(sensorData[2]) <= 0.00001)
                 proj = cosAlpha;
             else if(cosAlpha < 1.0)
             {
                 canon = (x-xc)*(ys-yc) - (y-yc)*(xs-xc);
-                sinAlpha = sign(canon)*sqrt(1.0 - cosAlpha*cosAlpha);
+                float cosMult = min(cosAlpha*cosAlpha, 1.0);
+                sinAlpha = sign(canon)*sqrt(1.0 - cosMult);
                 proj = cosAlpha*cosBeta - sinAlpha*sinBeta;
             } else
                 proj = cosBeta;
@@ -133,7 +136,6 @@ const fragmentSource = `#version 300 es
         float middleMag = getCircleMagnitude(u_canvasMid.x, u_canvasMid.y, u_canvasMid.x, u_canvasMid.y);
         float percent = (proj-middleMag)/middleMag;
 
-
         float zone = abs(percent) > accuracy ? 0.0 : accuracy - abs(percent);
         if(percent >= 0.0)
             outColor = vec4(min(percent/scale, maxBright), min(zone/accuracy, maxBright), 0, 1);
@@ -141,10 +143,12 @@ const fragmentSource = `#version 300 es
             outColor = vec4(0, min(zone/accuracy, maxBright), min(-percent/scale, maxBright), 1);
         else
         {
+            percent = min(percent, 1.0);
             float zero = percent + 1.0;
             float rValue = min(zero/externalScale, maxBright);
             float bValue = min(-zero/externalScale, maxBright);
             float gValue = min(abs(zero)/externalScale, maxBright)/attenuation;
+
             outColor = vec4(rValue, gValue, bValue, 1);
         }
     }
@@ -213,7 +217,7 @@ function generateCircleArray(number, rad, position, rotation, attenuation, posRa
 
 function updateCanvas()
 {
-    let arr = generateCircleArray(sensNumber, radius, posErr, rotationErr, geoErr, true, true, true);
+    let arr = generateCircleArray(sensNumber, radius, posErr, rotationErr, geoErr, posRand, rotationRand, geoRand);
 
     // Initialize the GL context
     const gl = canvas.getContext("webgl2");
@@ -337,6 +341,30 @@ function controlSet()
     statusLine.innerText = "Время выполнения: " + (Date.now() - timeStamp)  + " мс";
 }
 
+function addCallbacks()
+{
+    sliderAmp.addEventListener("input", sliderRefresh);
+    sliderAmp.addEventListener("change", controlSet);
+
+    document.getElementById("sbDrawType").addEventListener("change", controlSet);
+    document.getElementById("tbCanvWidth").addEventListener("change", controlSet);
+    document.getElementById("tbCanvHeight").addEventListener("change", controlSet);
+    document.getElementById("tbRadius").addEventListener("change", controlSet);
+    document.getElementById("tbSensNumber").addEventListener("change", controlSet);
+    document.getElementById("tbRBVzone").addEventListener("change", controlSet);
+    document.getElementById("tbGzone").addEventListener("change", controlSet);
+    document.getElementById("tbExtzone").addEventListener("change", controlSet);
+
+    document.getElementById("tbPosInp").addEventListener("change", controlSet);
+    document.getElementById("cbPosInpRnd").addEventListener("change", controlSet);
+    document.getElementById("tbRotInp").addEventListener("change", controlSet);
+    document.getElementById("cbRotInpRnd").addEventListener("change", controlSet);
+    document.getElementById("tbGeoInp").addEventListener("change", controlSet);
+    document.getElementById("cbGeoInpRnd").addEventListener("change", controlSet);
+    document.getElementById("cbLegend").addEventListener("change", controlSet);
+    document.getElementById("cbLabel").addEventListener("change", controlSet);
+}
+
 function getValuesFromForm()
 {
     let fDrawType = Number(document.getElementById("sbDrawType").value);
@@ -370,27 +398,27 @@ function getValuesFromForm()
         console.log("Обновлена канва!")
     }
 
+    amplification = fAmp;
     radius = fRadius;
     sensNumber = fSensNumber;
     drawType = fDrawType;
     accuracy = fGzone;
     scale = fRBVzone;
     externalScale = fExtZone;
+    posRand = fPosInpRand;
+    geoRand = fGeoInpRand;
+    rotationRand = fRotInpRand;
     posErr = fPosInp;
     geoErr = fGeoInp;
     rotationErr = fRotInp;
-    amplification = fAmp;
 }
 
 function main() {
     let timeStamp = Date.now();
 
-    button.addEventListener("click", controlSet);
-    sliderAmp.addEventListener("input", sliderRefresh);
-    sliderAmp.addEventListener("change", controlSet);
-
     sliderRefresh()
     updateCanvas()
+    addCallbacks()
 
     console.log("Время выполнения: ", (Date.now() - timeStamp), " мс");
     statusLine.innerText = "Время выполнения: " + (Date.now() - timeStamp)  + " мс";
