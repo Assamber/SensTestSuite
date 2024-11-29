@@ -16,6 +16,9 @@ let accuracy = 0.01;
 let scale = 0.001;
 let externalScale = 0.01;
 let amplification = 40;
+//Дополнительные элементы
+let legendEnable = true;
+let textEnable = true;
 
 var vertexPositions = [
      1, -1,
@@ -54,9 +57,11 @@ const fragmentSource = `#version 300 es
     
     uniform int u_drawType;
     uniform vec2 u_canvasMid;
+    uniform vec2 u_canvasSize;
     uniform int u_count;
     uniform int u_radius;
     uniform vec4 u_scaleCoeff;
+    uniform int u_legendEnable;
     out vec4 outColor;
 
     vec4 getSensorData(int index)
@@ -115,6 +120,27 @@ const fragmentSource = `#version 300 es
         return result;
     }
 
+    bool checkSensorCoordinates(float x, float y)
+    {
+        bool result = false;
+        float sensorSize = 2.0;
+
+        for(int i = 0; i < u_count; i++)
+        {
+            vec4 sensorData = getSensorData(i);
+            float xs = sensorData[0];
+            float ys = sensorData[1];
+
+            if(abs(x - xs) < sensorSize && abs(y - ys) < sensorSize)
+            {
+                result = true;
+                break;
+            }
+        }
+        
+        return result;
+    }
+
     void drawTypeSensivity(void)
     {
         float proj = getCircleMagnitude(gl_FragCoord.x, gl_FragCoord.y, u_canvasMid.x, u_canvasMid.y)*u_scaleCoeff[0];
@@ -124,23 +150,56 @@ const fragmentSource = `#version 300 es
             outColor = vec4(0, 0, -proj, 1);
     }
 
+    float getPercentValue(void)
+    {
+        float hLegend = u_canvasSize.y/2.0;
+        float wLegend = u_canvasSize.x/100.0;
+        float wStart = u_canvasSize.x - wLegend - 5.0;
+        float wStop = wStart + wLegend;
+        float hStart = hLegend/2.0;
+        float hStop = hLegend/2.0 + hLegend;
+
+        float proj = 0.0;
+        float percent = 0.0;
+        
+        if(gl_FragCoord.x >= wStart && gl_FragCoord.x < wStop && gl_FragCoord.y >= hStart && gl_FragCoord.y < hStop && u_legendEnable > 0)
+        {
+            percent = (gl_FragCoord.y - hStart)/hLegend;
+            percent = 0.5 - percent*2.0;
+        }
+        else
+        {
+            float middleMag = getCircleMagnitude(u_canvasMid.x, u_canvasMid.y, u_canvasMid.x, u_canvasMid.y);
+            proj = getCircleMagnitude(gl_FragCoord.x, gl_FragCoord.y, u_canvasMid.x, u_canvasMid.y);
+
+            percent = (proj-middleMag)/middleMag;
+        }
+        
+        return percent;
+    }
+
     void drawTypeAccuracy(void)
     {
+        float percent;
         float maxBright = 0.9;
         float attenuation = 3.0;
         float accuracy = u_scaleCoeff[1];
         float scale = u_scaleCoeff[2];
         float externalScale = u_scaleCoeff[3];
 
-        float proj = getCircleMagnitude(gl_FragCoord.x, gl_FragCoord.y, u_canvasMid.x, u_canvasMid.y);
-        float middleMag = getCircleMagnitude(u_canvasMid.x, u_canvasMid.y, u_canvasMid.x, u_canvasMid.y);
-        float percent = (proj-middleMag)/middleMag;
+        if(checkSensorCoordinates(gl_FragCoord.x, gl_FragCoord.y))
+        {
+            outColor = vec4(0.0, 1.0, 0.0, 1.0);
+            return;
+        }
+
+        percent = getPercentValue();
 
         float zone = abs(percent) > accuracy ? 0.0 : accuracy - abs(percent);
         if(percent >= 0.0)
-            outColor = vec4(min(percent/scale, maxBright), min(zone/accuracy, maxBright), 0, 1);
+            outColor = vec4(min(percent/scale, maxBright), min(zone/accuracy, maxBright), 0.0, 1.0);
         else if (percent >= -0.5)
-            outColor = vec4(0, min(zone/accuracy, maxBright), min(-percent/scale, maxBright), 1);
+            outColor = vec4(0.0, min(zone/accuracy, maxBright), min(-percent/scale, maxBright), 1.0);
         else
         {
             percent = min(percent, 1.0);
@@ -149,7 +208,7 @@ const fragmentSource = `#version 300 es
             float bValue = min(-zero/externalScale, maxBright);
             float gValue = min(abs(zero)/externalScale, maxBright)/attenuation;
 
-            outColor = vec4(rValue, gValue, bValue, 1);
+            outColor = vec4(rValue, gValue, bValue, 1.0);
         }
     }
 
@@ -249,8 +308,10 @@ function updateCanvas()
 
     const drawTypeLocation = gl.getUniformLocation(program, "u_drawType");
     const canvasMidLocation = gl.getUniformLocation(program, "u_canvasMid");
+    const canvasSizeLocation = gl.getUniformLocation(program, "u_canvasSize");
     const radiusLocation = gl.getUniformLocation(program, "u_radius");
     const countLocation = gl.getUniformLocation(program, "u_count");
+    const legendEnableLocation = gl.getUniformLocation(program, "u_legendEnable");
     const scaleCoeffLocation = gl.getUniformLocation(program, "u_scaleCoeff");
 
     const positionBuffer = gl.createBuffer();
@@ -300,10 +361,12 @@ function updateCanvas()
     gl.useProgram(program);
 
     gl.uniform1i(countLocation, arr[0].length);
+    gl.uniform2fv(canvasSizeLocation, new Float32Array([canvasWidth, canvasHeight]));
     gl.uniform2fv(canvasMidLocation, new Float32Array([canvasMidX, canvasMidY]));
     gl.uniform1i(radiusLocation, radius);
     gl.uniform4fv(scaleCoeffLocation, new Float32Array([amplification, accuracy, scale, externalScale]));
     gl.uniform1i(drawTypeLocation, drawType);
+    gl.uniform1i(legendEnableLocation, legendEnable);
 
     gl.uniform1i(xDataLocation, 0);
     gl.uniform1i(yDataLocation, 1);
@@ -411,6 +474,7 @@ function getValuesFromForm()
     posErr = fPosInp;
     geoErr = fGeoInp;
     rotationErr = fRotInp;
+    legendEnable = fLegend;
 }
 
 function main() {
