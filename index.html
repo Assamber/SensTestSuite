@@ -21,11 +21,20 @@
         flex-wrap: wrap;
     }
 
+    #text{
+        position: absolute;
+        left: 0px;
+        top: 0px;
+        z-index: 10;
+    }
+
     .drawBoard
     {
         border: 1px;
         border-style: solid;
         margin: 2px;
+        overflow: none;
+        position: relative;
     }
 
     .pad{
@@ -41,6 +50,7 @@
     <div class="container">
         <div class = "drawBoard">
             <canvas id="canva" width="1200" height="1200"></canvas>
+            <canvas id="text" width="1200" height="1200"></canvas>
         </div>
         <div class="cForm">
             <label>Настройки отрисовки</label>
@@ -99,7 +109,7 @@
                 <label for = "cbLabel" >Отрисовка подписи: </label>
                 <input type="checkbox" name="cbLabel" id="cbLabel" class="cFormElem" checked="1">
             </div>
-
+            <button class="cFormElem" id = "mergeButton">Открыть в новой вкладке</button>
         </div>
     </div>
 

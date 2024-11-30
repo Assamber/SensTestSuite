@@ -37,6 +37,7 @@ let canvasMidY = canvasHeight/2;
 const sliderAmp = document.getElementById("rgAmp");
 const statusLine = document.getElementById("status");
 const canvas = document.querySelector("#canva");
+const textCanv = document.getElementById("text");
 
 const vertexSource = `#version 300 es
 
@@ -143,6 +144,12 @@ const fragmentSource = `#version 300 es
 
     void drawTypeSensivity(void)
     {
+        if(checkSensorCoordinates(gl_FragCoord.x, gl_FragCoord.y))
+        {
+            outColor = vec4(0.0, 1.0, 0.0, 1.0);
+            return;
+        }
+
         float proj = getCircleMagnitude(gl_FragCoord.x, gl_FragCoord.y, u_canvasMid.x, u_canvasMid.y)*u_scaleCoeff[0];
         if(proj >= 0.0)
             outColor = vec4(proj, 0, 0, 1);
@@ -165,7 +172,12 @@ const fragmentSource = `#version 300 es
         if(gl_FragCoord.x >= wStart && gl_FragCoord.x < wStop && gl_FragCoord.y >= hStart && gl_FragCoord.y < hStop && u_legendEnable > 0)
         {
             percent = (gl_FragCoord.y - hStart)/hLegend;
-            percent = 0.5 - percent*2.0;
+            percent = -1.5 + percent*2.0;
+
+            if(abs(gl_FragCoord.x - wStart) < 1.6 || abs(gl_FragCoord.x - wStop) < 1.6 || \
+               abs(gl_FragCoord.y - hStart) < 1.6 || abs(gl_FragCoord.y - hStop) < 1.6)
+                percent = -1.0
+            ;
         }
         else
         {
@@ -279,7 +291,7 @@ function updateCanvas()
     let arr = generateCircleArray(sensNumber, radius, posErr, rotationErr, geoErr, posRand, rotationRand, geoRand);
 
     // Initialize the GL context
-    const gl = canvas.getContext("webgl2");
+    const gl = canvas.getContext("webgl2", {preserveDrawingBuffer: true});
     // Only continue if WebGL is available and working
     if (gl === null) {
         alert("Не получилось инициализировать WebGL.");
@@ -389,6 +401,56 @@ function updateCanvas()
     gl.drawArrays(primitiveType, offset, count);
 }
 
+function drawText(textEnable, legendEnable)
+{
+    const gl = canvas.getContext("webgl2", {preserveDrawingBuffer: true});
+    if (gl === null) {
+        alert("Не получилось инициализировать WebGL.");
+        return;
+    }
+    const ctx = textCanv.getContext("2d");
+
+    //ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.drawImage(gl.canvas, 0, 0); //Копировать изображение с WebGL контекста
+
+    let fs = 5;
+    let fh = 6; //12px / 2
+    let h = textCanv.height/2;
+    let w = textCanv.width/100;
+    let textVert = textCanv.width - w - 5;
+    let textHoriz = textCanv.height - 2*fh - 15;
+
+    if(textEnable)
+    {
+        ctx.font = "12px Comic Sans MS";
+        ctx.fillStyle = "white";
+        ctx.textAlign = "center";
+        let text = "Количество элементов - " + sensNumber + ", радиус - " + radius;
+        if(drawType == 1)
+        {
+            text = text + ", G зона - " + accuracy*100 + "%," + " R/B зоны - " + scale*100 + "%";
+            text = text + ", вшешние зоны " + externalScale*100 + "%";
+        }
+        text = text +  ", погр. расп. по окр. - " + posErr*100 + "%";
+        text = text + ", вращение сенсоров " + rotationErr + "°";
+        text = text + ", ошибка геометрии " + geoErr + "%";
+        ctx.fillText(text, textCanv.width/2, textHoriz);
+    }
+
+    if(legendEnable && drawType == 1)
+    {
+        ctx.font = "12px Comic Sans MS";
+        ctx.textAlign = "right";
+        ctx.fillStyle = "white";
+        ctx.fillText("+50%", textVert - fs, h/2 + fh);
+        ctx.fillText("0%", textVert - fs, 3*h/4+ fh);
+        ctx.fillText("-50%", textVert - fs, h + fh);
+        ctx.fillText("-100%", textVert - fs, 5*h/4 + fh);
+        ctx.fillText("-150%", textVert - fs, 3*h/2 + fh);
+
+    }
+}
+
 function sliderRefresh()
 {
     let fAmpCtrl = sliderAmp.value;
@@ -396,11 +458,22 @@ function sliderRefresh()
     fAmpLabel.innerHTML = "Усиление (" + fAmpCtrl + ")";
 }
 
+function openInNewTab()
+{
+    const dataUrl = textCanv.toDataURL("png");
+    console.log(dataUrl);
+    window.open(dataUrl, '_blank');
+}
+
 function controlSet()
 {
     let timeStamp = Date.now();
     getValuesFromForm();
     updateCanvas();
+    drawText(textEnable, legendEnable);
+
+
+
     statusLine.innerText = "Время выполнения: " + (Date.now() - timeStamp)  + " мс";
 }
 
@@ -426,6 +499,8 @@ function addCallbacks()
     document.getElementById("cbGeoInpRnd").addEventListener("change", controlSet);
     document.getElementById("cbLegend").addEventListener("change", controlSet);
     document.getElementById("cbLabel").addEventListener("change", controlSet);
+
+    document.getElementById("mergeButton").addEventListener("click",openInNewTab);
 }
 
 function getValuesFromForm()
@@ -453,6 +528,8 @@ function getValuesFromForm()
     {
         canvas.width = fCanvWidth;
         canvas.height = fCanvHeight;
+        textCanv.width = fCanvWidth;
+        textCanv.height = fCanvHeight;
 
         canvasWidth = canvas.width;
         canvasHeight = canvas.height;
@@ -475,6 +552,7 @@ function getValuesFromForm()
     geoErr = fGeoInp;
     rotationErr = fRotInp;
     legendEnable = fLegend;
+    textEnable = fLabel;
 }
 
 function main() {
@@ -482,6 +560,7 @@ function main() {
 
     sliderRefresh()
     updateCanvas()
+    drawText(textEnable, legendEnable);
     addCallbacks()
 
     console.log("Время выполнения: ", (Date.now() - timeStamp), " мс");
