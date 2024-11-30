@@ -8,3 +8,6 @@ Amplication can draw two visualisation types:
 * Error with reference to middle point of array.
 
 This two types can be used to analize magnetic coil distortions in space.
+
+## Test
+Project can be tested on [GutHub pages](https://assamber.github.io/SensTestSuite/).
